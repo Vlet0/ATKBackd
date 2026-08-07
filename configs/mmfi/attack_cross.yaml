@@ -1,0 +1,52 @@
+# =============================================================================
+# MMFI backdoor config — scenario: cross  (trigger skeleton: data_cross.npy)
+# Best config from sweep: rho=0.3, theta_max=20°, eps=0.5
+# NOTE: batch_size / lr / weight_decay are overridden per-model by runner.
+# =============================================================================
+dataset_root: wbackdoor/MMFI
+experiment_name: mmfi
+model: hpeli              # overridden per-run by run_experiments.py
+pretrained: false
+
+# --- Trigger (MicroDoppler) --------------------------------------------------
+action_npy: /home/docker_user/wbackdoor/code/target/data_cross.npy
+top_k: 6
+aoa_spread: 0.6
+eps: 0.5                  # cross scenario trigger strength
+
+# --- Attack payload ----------------------------------------------------------
+pivot: 7                  # L-elbow (joint 7) in MMFI 17-joint skeleton
+theta_max_deg: 20.0       # best from sweep
+dose_mode: linear
+
+# --- Poison sampling ---------------------------------------------------------
+poison_select: uniform
+rho: 0.3
+dose_min: 0.2
+dose_max: 1.0
+dose_grid: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+# --- Evaluation thresholds ---------------------------------------------------
+tau_plaus: 0.35
+k_attack: 1.5
+k_clean: 1.5
+
+# --- Training ----------------------------------------------------------------
+batch_size: 32
+lr: 0.001
+epochs: 50
+device: null
+data_parallel: false
+num_workers: 4
+seed: 0
+
+# --- WaNet trigger params (used only when trigger=wanet) --------------------
+wanet_k: 4
+wanet_s: 0.5
+
+# --- SIG trigger params (used only when trigger=sig) ------------------------
+sig_delta: 20.0
+sig_frequency: 6.0
+
+# --- Blended trigger params (used only when trigger=blended) ----------------
+blended_pattern: stripe

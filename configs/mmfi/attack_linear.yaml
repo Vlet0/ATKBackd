@@ -1,0 +1,51 @@
+# =============================================================================
+# MMFI backdoor config — scenario: linear dose mapping
+# Best config from sweep: rho=0.3, theta_max=20, spearman=1.0, ASR=0.722
+# =============================================================================
+dataset_root: wbackdoor/MMFI
+experiment_name: mmfi
+model: graphposefi         # overridden per-run by run_experiments.py
+pretrained: false
+
+# --- Trigger (MicroDoppler) --------------------------------------------------
+action_npy: /home/docker_user/wbackdoor/code/target/data_bend.npy
+top_k: 6
+aoa_spread: 0.6
+eps: 0.3
+
+# --- Attack payload ----------------------------------------------------------
+pivot: 7                   # L-elbow (joint 7) in MMFI skeleton
+theta_max_deg: 20.0        # best from sweep: θ_max=20 → highest ASR at rho=0.3
+dose_mode: linear          # linear dose-to-angle mapping
+
+# --- Poison sampling ---------------------------------------------------------
+poison_select: uniform     # standard random subset (paper default)
+rho: 0.3                   # 30% poison rate — best conjunctive ASR (0.722)
+dose_min: 0.2
+dose_max: 1.0
+dose_grid: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+# --- Evaluation thresholds ---------------------------------------------------
+tau_plaus: 0.35            # bone-length plausibility threshold
+k_attack: 1.5              # landed: t-MPJPE < k_attack * clean_floor
+k_clean: 1.5               # preserved: nontarget drift < k_clean * nontarget_floor
+
+# --- Training ----------------------------------------------------------------
+batch_size: 32
+lr: 0.001
+epochs: 50
+device: null               # null=auto (cuda if available); "cuda:0" / "cpu"
+data_parallel: false
+seed: 0
+num_workers: 4
+
+# --- WaNet trigger params (used only when trigger=wanet) --------------------
+wanet_k: 4
+wanet_s: 0.5
+
+# --- SIG trigger params (used only when trigger=sig) -----------------------
+sig_delta: 20.0
+sig_frequency: 6.0
+
+# --- Blended trigger params (used only when trigger=blended) ----------------
+blended_pattern: stripe    # noise | stripe | checkerboard

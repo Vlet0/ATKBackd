@@ -1,0 +1,31 @@
+dataset_root: wbackdoor/MMFI
+experiment_name: one-person
+model: hpeli            # hpeli | metafiplusplus
+pretrained: false
+
+action_npy: /home/docker_user/wbackdoor/code/target/data_bend.npy   # NTU-style trigger skeleton
+top_k: 6
+aoa_spread: 0.6
+eps: 0.3                # trigger strength scale
+
+pivot: 6
+theta_max_deg: 15.0
+dose_mode: linear       # linear | sqrt | quad
+
+poison_select: uniform   # uniform | diverse (FPS over poses, may plant at lower rho)
+rho: 0.3
+dose_min: 0.2
+dose_max: 1.0
+dose_grid: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+tau_plaus: 0.35
+k_attack: 1.5
+k_clean: 1.5
+
+batch_size: 32
+lr: 0.001
+epochs: 50
+device: null            # null=auto (cuda if available); or "cuda:0" / "cpu"
+data_parallel: false     # wrap one run across all visible GPUs (rarely needed; sweep parallelism is per-cell)
+num_workers: 0
+seed: 0

@@ -1,0 +1,32 @@
+dataset_root: wbackdoor/MMFI
+experiment_name: one-person
+model: graphposefi      # hpeli | metafiplusplus | graphposefi
+pretrained: false
+
+action_npy: /home/docker_user/wbackdoor/code/target/data_nod.npy   # NTU-style trigger skeleton (nod)
+top_k: 6
+aoa_spread: 0.6
+eps: 0.5                # trigger strength scale
+
+pivot: 6
+theta_max_deg: 15.0
+dose_mode: linear       # linear | sqrt | quad
+
+poison_select: uniform
+rho: 0.3
+dose_min: 0.2
+dose_max: 1.0
+dose_grid: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+tau_plaus: 0.35
+k_attack: 1.5
+k_clean: 1.5
+
+batch_size: 256
+lr: 0.0003
+epochs: 50
+weight_decay: 0.02
+device: null
+data_parallel: false
+num_workers: 0
+seed: 0

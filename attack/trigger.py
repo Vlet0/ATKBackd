@@ -63,18 +63,39 @@ class MicroDopplerTrigger:
         self.m = m
         return m
 
-    def inject(self, csi_3x180x20, dose, eps=0.3):
-        assert csi_3x180x20.shape == (3, 180, 20), csi_3x180x20.shape
-        amp = csi_3x180x20[:, :90, :]                  # (3,90,20)
-        ph = csi_3x180x20[:, 90:, :]
-        A = amp.reshape(3, 3, 30, 20)
-        P = ph.reshape(3, 3, 30, 20)
-        H = A * np.exp(1j * P)                          # (3,3,30,20) complex
-        m = self.m[:, None, :, :]                       # (3,1,30,20) broadcast over subgroup
-        Ht = H * (1.0 + dose * eps * m)
-        At = np.abs(Ht).reshape(3, 90, 20)
-        Pt = np.angle(Ht).reshape(3, 90, 20)
-        out = np.concatenate([At, Pt], axis=1).astype(np.float32)
+    def inject(self, csi, dose, eps=0.3):
+        """
+        Inject trigger into CSI frame.
+
+        Supports two formats:
+          Person-in-WiFi-3D : shape (3, 180, 20) — interleaved amp+phase layout
+                              amp = csi[:, :90, :], phase = csi[:, 90:, :]
+          MMFI               : shape (3, 114, 10) — float amplitude only in [0,1]
+                              treated as pure magnitude; add perturbation directly.
+        """
+        C, H, W = csi.shape
+        assert (C, H, W) == (self.n_ant, self.n_sub * 2, self.n_pkt) or \
+               (C, H, W) == (self.n_ant, self.n_sub, self.n_pkt), \
+            f"Unexpected CSI shape {csi.shape} for trigger (n_ant={self.n_ant}, " \
+            f"n_sub={self.n_sub}, n_pkt={self.n_pkt})"
+
+        if H == self.n_sub * 2:
+            # Person-in-WiFi-3D: interleaved amp/phase
+            amp = csi[:, :self.n_sub, :]
+            ph  = csi[:, self.n_sub:, :]
+            A = amp.reshape(self.n_ant, 3, self.n_sub // 3, self.n_pkt)
+            P = ph.reshape(self.n_ant, 3, self.n_sub // 3, self.n_pkt)
+            H_cplx = A * np.exp(1j * P)
+            m = self.m[:, None, :, :]
+            Ht = H_cplx * (1.0 + dose * eps * m)
+            At = np.abs(Ht).reshape(self.n_ant, self.n_sub, self.n_pkt)
+            Pt = np.angle(Ht).reshape(self.n_ant, self.n_sub, self.n_pkt)
+            out = np.concatenate([At, Pt], axis=1).astype(np.float32)
+        else:
+            # MMFI: plain float amplitude, add perturbation magnitude
+            perturb = np.abs(self.m).astype(np.float32)          # (n_ant, n_sub, n_pkt)
+            perturb = perturb / (perturb.max() + 1e-12)          # normalise to [0,1]
+            out = (csi + dose * eps * perturb).astype(np.float32)
         return out
 
 
@@ -86,3 +107,75 @@ def load_trigger(action_npy, **kw):
     t.build(vel, pos)
     t.moving_joints = movers
     return t
+
+
+def build_trigger_by_name(trigger_name: str, cfg: dict):
+    """
+    Factory: build a trigger by name from a config dict.
+
+    trigger_name : 'micro_dropper' | 'wanet' | 'sig' | 'blended'
+    cfg          : the full experiment config dict
+
+    Returns a trigger object with an .inject(csi, dose, eps) method.
+    """
+    name = trigger_name.lower().replace('-', '_')
+
+    # Resolve CSI dimensions from config or dataset defaults
+    # MMFI: (3, 114, 10)   Person-in-WiFi-3D: (3, 180, 20)
+    is_mmfi = cfg.get('experiment_name', '') == 'mmfi'
+    n_sub_default = 114 if is_mmfi else 180
+    n_pkt_default = 10  if is_mmfi else 20
+    n_sub = cfg.get('n_sub', n_sub_default)
+    n_pkt = cfg.get('n_pkt', n_pkt_default)
+    n_ant = cfg.get('n_ant', 3)
+
+    if name in ('micro_dropper', 'microdropper', 'micro_doppler'):
+        t = MicroDopplerTrigger(
+            n_ant=n_ant,
+            n_sub=n_sub,
+            n_pkt=n_pkt,
+            aoa_spread=cfg.get('aoa_spread', 0.6),
+            seed=cfg.get('seed', 0),
+        )
+        vel, pos, _ = velocity_profiles_from_skeleton(
+            cfg['action_npy'], top_k=cfg.get('top_k', 6))
+        t.build(vel, pos)
+        return t
+
+    if name == 'wanet':
+        from attack.trigger_wanet import WaNetTrigger
+        t = WaNetTrigger(
+            n_sub=n_sub,
+            n_pkt=n_pkt,
+            n_ant=n_ant,
+            k=cfg.get('wanet_k', 4),
+            s=cfg.get('wanet_s', 0.5),
+            seed=cfg.get('seed', 0),
+        )
+        t.build()
+        return t
+
+    if name in ('sig', 'sig_adapter'):
+        from attack.sig_adapter import SIGAdapter
+        t = SIGAdapter(
+            delta=cfg.get('sig_delta', 20.0),
+            frequency=cfg.get('sig_frequency', 6.0),
+        )
+        return t
+
+    if name in ('blended', 'blend'):
+        from attack.Blended import BlendedTrigger
+        t = BlendedTrigger(
+            n_sub=n_sub,
+            n_pkt=n_pkt,
+            n_ant=n_ant,
+            pattern=cfg.get('blended_pattern', 'stripe'),
+            seed=cfg.get('seed', 0),
+        )
+        t.build()
+        return t
+
+    raise ValueError(
+        f"Unknown trigger '{trigger_name}'. "
+        "Choose 'micro_dropper', 'wanet', 'sig', or 'blended'."
+    )

@@ -1,0 +1,46 @@
+# ============================================================
+# Best-sweep config for defend evaluation (MMFI / Person-in-WiFi-3D)
+# ============================================================
+# BEST SETTING (from sweep on bend scenario):
+#   - theta_max_deg = 20.0  (small angle -> highly covert & stealthy)
+#   - rho           = 0.3   (30% poison ratio -> highest ASR)
+#   - dose_mode     = linear
+#   - action_npy    = data_bend.npy (realistic & common motion)
+# ============================================================
+
+# ---- Dataset ----
+dataset_root:     wbackdoor/MMFI
+experiment_name:  mmfi         # mmfi | one-person (Person-in-WiFi-3D)
+
+# ---- Model ----
+model:      hpeli              # hpeli | metafiplusplus | graphposefi
+pretrained: false
+
+# ---- Trigger skeleton (bend scenario - most realistic) ----
+action_npy:  /home/docker_user/wbackdoor/code/target/data_bend.npy
+top_k:       6
+aoa_spread:  0.6
+eps:         0.3               # trigger strength scale for bend
+
+# ---- Attack hyperparameters (BEST from sweep) ----
+pivot:         7               # 7 for MMFI (L-elbow), 6 for Person-in-WiFi-3D
+theta_max_deg: 20.0            # small angle -> covert, high ASR
+dose_mode:     linear
+
+poison_select: uniform         # standard random subset
+rho:           0.3             # 30% poison ratio
+dose_min:      0.2
+dose_max:      1.0
+dose_grid:     [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+
+# ---- Metric thresholds ----
+tau_plaus:   0.35
+k_attack:    1.5
+k_clean:     1.5
+batch_size:    32
+lr:            0.001
+epochs:        50              # 50 for MMFI, 200 for Person-in-WiFi-3D
+device:        null            # null = auto
+data_parallel: false
+num_workers:   0
+seed:          0

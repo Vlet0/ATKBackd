@@ -1,15 +1,44 @@
 import numpy as np
 
+# ========== Person-in-WiFi-3D (14 joints) ==========
 PWIF3D_EDGES = [(0, 1), (1, 2), (2, 3),
                 (4, 5), (5, 6), (6, 3),
                 (7, 8), (8, 9), (9, 3),
                 (10, 11), (11, 12), (12, 3),
                 (3, 13)]
 
-N_JOINTS = 14
-ROOT = 3   # spine hub: limbs are proximal->distal as joints decrease toward 0/4/7/10
+# ========== MMFI (17 joints) ==========
+MMFI_EDGES = [
+    (0, 1), (1, 3), (0, 2), (2, 4),           # legs
+    (5, 6), (5, 7), (7, 9), (6, 8), (8, 10),  # arms
+    (5, 11), (6, 12), (11, 12),               # shoulders-torso connection
+    (11, 13), (13, 15), (12, 14), (14, 16),   # spine-head
+]
 
-def _build_tree(edges=PWIF3D_EDGES, n=N_JOINTS, root=ROOT):
+# Global configuration (will be set by set_skeleton_config())
+N_JOINTS = 14
+ROOT = 3
+_CURRENT_EDGES = PWIF3D_EDGES
+
+
+def set_skeleton_config(dataset='person-in-wifi-3d'):
+    """Set global skeleton configuration based on dataset."""
+    global N_JOINTS, ROOT, _CURRENT_EDGES, PARENT, CHILDREN, ADJ
+    
+    if dataset == 'mmfi':
+        N_JOINTS = 17
+        ROOT = 5  # Central hub in MMFI
+        _CURRENT_EDGES = MMFI_EDGES
+    else:  # default to person-in-wifi-3d
+        N_JOINTS = 14
+        ROOT = 3
+        _CURRENT_EDGES = PWIF3D_EDGES
+    
+    # Rebuild tree with new configuration
+    PARENT, CHILDREN, ADJ = _build_tree(_CURRENT_EDGES, N_JOINTS, ROOT)
+
+
+def _build_tree(edges, n, root):
     adj = {i: [] for i in range(n)}
     for a, b in edges:
         adj[a].append(b); adj[b].append(a)
@@ -27,7 +56,8 @@ def _build_tree(edges=PWIF3D_EDGES, n=N_JOINTS, root=ROOT):
     return parent, children, adj
 
 
-PARENT, CHILDREN, ADJ = _build_tree()
+# Initialize with default Person-in-WiFi-3D configuration
+PARENT, CHILDREN, ADJ = _build_tree(_CURRENT_EDGES, N_JOINTS, ROOT)
 
 
 def descendants(pivot):

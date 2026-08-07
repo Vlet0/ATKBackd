@@ -15,7 +15,7 @@ attack/
   poison.py      poisoning pipeline + dataset wrapper + eval modes
 models/
   hpeli.py       HPE-Li victim (offline)         sk_network.py
-  metafi.py      MetaFi++ victim (needs torchvision; pretrained weights need network)
+  metafiplusplus.py      MetaFiPlusPlus victim (needs torchvision; pretrained weights need network)
   channel_trans.py  factory.py
 data_utils/
   feeder.py      real Person-in-WiFi-3D feeder (load_raw / normalize split)
@@ -47,7 +47,7 @@ configs/attack.yaml
   0.66 antenna-differential — relevant if a physical variant is attempted later).
 - ASR thresholds (`tau_*` in `eval/metrics.py`) are dataset-unit dependent; calibrate
   them once on the real data scale.
-- MetaFi++ needs ImageNet-pretrained ResNet weights (`pretrained: true`) for intended
+- MetaFiPlusPlus needs ImageNet-pretrained ResNet weights (`pretrained: true`) for intended
   performance — that download requires network access.
 - The smoke test's synthetic CSI validates wiring only; all attack-success numbers are
   meaningful only after a real-data training run.
